@@ -1,0 +1,28 @@
+{
+  "name": "token-ring-banking",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Distributed token-ring mutual exclusion for four ATM processes on localhost",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "start": "node dist/main.js",
+    "dev": "tsx watch src/main.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "token-ring",
+    "distributed-systems",
+    "typescript"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}
