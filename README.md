@@ -1,7 +1,10 @@
 # Token Ring Banking
 
 Quattro processi ATM su localhost, mutua esclusione su un saldo
-condiviso tramite Token Ring.
+condiviso tramite Token Ring. Quando tutte le transazioni sono state
+eseguite il ring si arresta automaticamente: il primo nodo che vede
+un giro completo senza modifiche immette un messaggio `DONE` che fa il
+giro e fa uscire ordinatamente i quattro processi.
 
 ## Requisiti
 
@@ -18,7 +21,8 @@ npm run build
 ## Avvio
 
 Modo consigliato — un singolo comando avvia i 4 ATM come processi
-UNIX separati e li ferma tutti insieme con `Ctrl+C`:
+UNIX separati e li ferma tutti insieme (manualmente con `Ctrl+C`,
+oppure automaticamente al termine delle transazioni):
 
 ```bash
 npm run demo
