@@ -91,7 +91,7 @@ export const startAtm = async (
     // poi rilascio passando il token al successore.
     balance = msg.balance;
     const op = queue.shift();
-    let quietRounds: number;
+    let emptyRounds: number;
 
     if (op !== undefined) {
       printToConsole(`token arrived, balance ${balance}`);
@@ -108,14 +108,14 @@ export const startAtm = async (
       printToConsole(`transaction completed`);
       // Una transazione è avvenuta: il ring NON è idle. Resetto il
       // contatore prima di rilanciare il token.
-      quietRounds = 0;
+      emptyRounds = 0;
     } else {
       // Nessuna transazione in coda: incremento il contatore di giri
       // idle portato dal token. Quando ATM_COUNT nodi consecutivi non
       // fanno modifiche, il giro è completo senza attività -> termino.
-      quietRounds = msg.quietRounds + 1;
+      emptyRounds = msg.emptyRounds + 1;
       printToConsole(
-        `token arrived (idle ${quietRounds}/${ATM_COUNT}), balance ${balance}`,
+        `token arrived (idle ${emptyRounds}/${ATM_COUNT}), balance ${balance}`,
       );
     }
 
@@ -127,16 +127,16 @@ export const startAtm = async (
     // intero giro idle, immetto un DONE col mio id come origine. Non
     // esco subito: aspetto che il DONE torni a me dopo aver fatto il
     // giro, così so che tutti gli altri lo hanno visto e propagato.
-    if (quietRounds >= ATM_COUNT) {
+    if (emptyRounds >= ATM_COUNT) {
       printToConsole(
-        `ring idle for ${quietRounds} hops, initiating shutdown (origin ATM${atmId})`,
+        `ring idle for ${emptyRounds} hops, initiating shutdown (origin ATM${atmId})`,
       );
       toSucc.write(serializeDoneMessage(balance, atmId));
       return;
     }
 
     printToConsole(`forward token, balance ${balance}`);
-    toSucc.write(serializeTokenMessage(balance, quietRounds));
+    toSucc.write(serializeTokenMessage(balance, emptyRounds));
   };
 
   // Mutex implicito sui messaggi in arrivo: incateno ogni nuovo messaggio
@@ -176,7 +176,7 @@ export const startAtm = async (
     const seed: TokenMessage = {
       type: "TOKEN",
       balance: INITIAL_BALANCE,
-      quietRounds: 0,
+      emptyRounds: 0,
     };
     enqueue(seed);
   }

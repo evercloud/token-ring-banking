@@ -1,7 +1,7 @@
 // Wire format: un oggetto JSON per riga TCP (newline alla fine).
 // Sul ring possono viaggiare due tipi di messaggio:
 //  - TOKEN: il testimone normale, porta il saldo e il contatore di giri
-//    consecutivi senza modifiche (quietRounds), usato dalla rilevazione
+//    consecutivi senza modifiche (emptyRounds), usato dalla rilevazione
 //    di terminazione distribuita.
 //  - DONE: messaggio di shutdown coordinato. Quando un nodo rileva che
 //    il ring è rimasto idle per ATM_COUNT hop consecutivi, immette un
@@ -13,7 +13,7 @@
 export type TokenMessage = {
   type: "TOKEN";
   balance: number;
-  quietRounds: number;
+  emptyRounds: number;
 };
 
 export type DoneMessage = {
@@ -44,7 +44,7 @@ const isTokenMessage = (value: unknown): value is TokenMessage => {
   if (typeof o.balance !== "number" || !Number.isFinite(o.balance)) {
     return false;
   }
-  if (typeof o.quietRounds !== "number" || !Number.isInteger(o.quietRounds)) {
+  if (typeof o.emptyRounds !== "number" || !Number.isInteger(o.emptyRounds)) {
     return false;
   }
   return true;
@@ -69,9 +69,9 @@ const isDoneMessage = (value: unknown): value is DoneMessage => {
 
 export const serializeTokenMessage = (
   balance: number,
-  quietRounds: number,
+  emptyRounds: number,
 ): string => {
-  const msg: TokenMessage = { type: "TOKEN", balance, quietRounds };
+  const msg: TokenMessage = { type: "TOKEN", balance, emptyRounds };
   return JSON.stringify(msg) + FRAME_SUFFIX;
 };
 
