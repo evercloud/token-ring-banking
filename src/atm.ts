@@ -8,6 +8,7 @@ import {
 import {
   ATM_COUNT,
   FORWARD_DELAY_MS,
+  HOST,
   INITIAL_BALANCE,
   listenPort,
   successorPort,
@@ -31,6 +32,10 @@ const applyOp = (balance: number, op: TxOp): number => {
 const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
+// Id del successore secondo la topologia ad anello (ATM4 -> ATM1).
+const successorId = (atmId: number): number =>
+  atmId >= ATM_COUNT ? 1 : atmId + 1;
+
 export const startAtm = async (
   atmId: number,
   pending: TxOp[],
@@ -41,10 +46,27 @@ export const startAtm = async (
 
   const port = listenPort(atmId);
   const succ = successorPort(atmId);
+  const succId = successorId(atmId);
+
+  // Log di startup: il nodo è up e dichiara su quale porta è in ascolto
+  // e a quale successore si collegherà. Utile in avvio manuale, dove i
+  // terminali di ATM2/3/4 resterebbero altrimenti muti finché ATM1 non
+  // inietta il primo token.
+  printToConsole(
+    `starting on ${HOST}:${port} (successor: ATM${succId} on ${HOST}:${succ})`,
+  );
 
   const incomingP = acceptFirstConnection(port);
   const outgoingP = connectWithRetry(succ);
   const [fromPred, toSucc] = await Promise.all([incomingP, outgoingP]);
+
+  // Ring chiuso: i due lati della connessione (predecessore e successore)
+  // sono pronti. ATM1 da qui inietta il token, gli altri restano in attesa.
+  if (atmId === 1) {
+    printToConsole(`connected to ring, injecting initial token`);
+  } else {
+    printToConsole(`connected to ring, waiting for token`);
+  }
 
   const decoder = new RingMessageDecoder();
   const queue = [...pending];
@@ -94,18 +116,28 @@ export const startAtm = async (
     let emptyRounds: number;
 
     if (op !== undefined) {
-      printToConsole(`token arrived, balance ${balance}`);
-      printToConsole(`start ${op.kind} ${op.amount}`);
+      // Log didascalici allineati ai cinque step della specifica §5.2:
+      // 1. lettura saldo, 2. validazione, 3-4. aggiornamento e scrittura,
+      // 5. registrazione (log) dell'operazione. La sezione critica è
+      // segnata esplicitamente in apertura e chiusura per rendere
+      // visibile nei log l'invariante "una sola sezione critica attiva
+      // alla volta" (specifica §9).
+      printToConsole(`token received, current balance ${balance}`);
+      printToConsole(`entering critical section`);
+      printToConsole(`start transaction: ${op.kind} ${op.amount}`);
       const before = balance;
       balance = applyOp(balance, op);
       if (op.kind === "withdraw" && balance === before) {
         printToConsole(
-          `withdraw skipped (not enough money), balance ${balance}`,
+          `validation FAILED (insufficient funds, balance ${balance})`,
         );
+        printToConsole(`transaction aborted, balance unchanged`);
       } else {
-        printToConsole(`after tx, balance ${balance}`);
+        printToConsole(`validation OK`);
+        printToConsole(`balance updated: ${before} -> ${balance}`);
+        printToConsole(`transaction logged`);
       }
-      printToConsole(`transaction completed`);
+      printToConsole(`leaving critical section`);
       // Una transazione è avvenuta: il ring NON è idle. Resetto il
       // contatore prima di rilanciare il token.
       emptyRounds = 0;
@@ -115,7 +147,7 @@ export const startAtm = async (
       // fanno modifiche, il giro è completo senza attività -> termino.
       emptyRounds = msg.emptyRounds + 1;
       printToConsole(
-        `token arrived (idle ${emptyRounds}/${ATM_COUNT}), balance ${balance}`,
+        `token received, current balance ${balance} (no pending transactions, idle ${emptyRounds}/${ATM_COUNT})`,
       );
     }
 
@@ -129,7 +161,7 @@ export const startAtm = async (
     // giro, così so che tutti gli altri lo hanno visto e propagato.
     if (emptyRounds >= ATM_COUNT) {
       printToConsole(
-        `ring idle for ${emptyRounds} hops, initiating shutdown (origin ATM${atmId})`,
+        `ring idle for ${emptyRounds} hops, initiating coordinated shutdown (origin ATM${atmId})`,
       );
       toSucc.write(serializeDoneMessage(balance, atmId));
       return;

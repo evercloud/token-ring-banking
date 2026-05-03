@@ -10,7 +10,7 @@ cd "$ROOT"
 
 # Build se manca, così lo script funziona anche da clean checkout.
 if [ ! -f dist/main.js ]; then
-  echo "[demo] build mancante, eseguo npm run build..."
+  echo "[demo] dist/ missing, running npm run build..."
   npm run build
   echo
 fi
@@ -19,12 +19,12 @@ pids=()
 
 cleanup() {
   echo
-  echo "[demo] arresto in corso..."
+  echo "[demo] shutting down..."
   for pid in "${pids[@]}"; do
     kill "$pid" 2>/dev/null || true
   done
   wait 2>/dev/null || true
-  echo "[demo] tutti i processi ATM terminati."
+  echo "[demo] all ATM processes terminated."
 }
 trap cleanup INT TERM
 
@@ -37,7 +37,7 @@ start_atm() {
   printf "[demo]   %s -> PID %d\n" "$label" "$pid"
 }
 
-echo "[demo] avvio dei 4 ATM come processi UNIX separati:"
+echo "[demo] starting 4 ATMs as separate UNIX processes:"
 start_atm ATM2 --atm 2 --withdraw 200
 start_atm ATM3 --atm 3 --deposit 100
 start_atm ATM4 --atm 4 --withdraw 500
@@ -45,7 +45,7 @@ start_atm ATM4 --atm 4 --withdraw 500
 # i listener degli altri sono sicuramente attivi.
 sleep 0.5
 start_atm ATM1 --atm 1
-echo "[demo] ring attivo, Ctrl+C per fermare tutto."
+echo "[demo] ring active, Ctrl+C to stop all."
 echo
 
 wait
