@@ -137,26 +137,38 @@ export const startAtm = async (
     toSucc.write(serializeTokenMessage(balance, quietRounds));
   };
 
-  // Le callback di "data"/"end" sono async: in un Token Ring c'e' un
-  // solo testimone in circolazione, quindi non possono arrivare due
-  // messaggi mentre ne sto elaborando uno (il predecessore non
-  // rispedira' finche' il token non gli torna), e non c'e' rischio
-  // di chiamate sovrapposte di onMessage.
-  fromPred.on("data", async (buf: Buffer) => {
+  // Mutex implicito sui messaggi in arrivo: incateno ogni nuovo messaggio
+  // su una Promise sequenziale, cosi' due chiamate a onMessage non possono
+  // mai sovrapporsi anche se TCP dovesse consegnare piu' messaggi prima
+  // che il primo sia stato processato.
+  // Nel Token Ring nominale (un solo testimone in circolazione) la
+  // sovrapposizione non si presenta, ma serializzare qui rende la logica
+  // robusta a evoluzioni future del protocollo (es. burst DONE+TOKEN) e
+  // costa essenzialmente zero.
+  let processing: Promise<void> = Promise.resolve();
+  const enqueue = (msg: RingMessage): void => {
+    processing = processing
+      .then(() => onMessage(msg))
+      .catch((err: unknown) => {
+        console.error(err);
+      });
+  };
+
+  fromPred.on("data", (buf: Buffer) => {
     for (const msg of decoder.append(buf.toString("utf8"))) {
-      await onMessage(msg);
+      enqueue(msg);
     }
   });
 
-  fromPred.on("end", async () => {
+  fromPred.on("end", () => {
     for (const msg of decoder.flush()) {
-      await onMessage(msg);
+      enqueue(msg);
     }
   });
 
   // ATM1 e' il seme del ring: inietta il primo TOKEN. Lo facciamo passare
-  // per onMessage (invece di scrivere il TOKEN direttamente) cosi' anche
-  // al primo giro vengono prodotti gli stessi log degli altri nodi e la
+  // per la stessa coda usata dai messaggi in ingresso, cosi' anche al
+  // primo giro vengono prodotti gli stessi log degli altri nodi e la
   // logica di terminazione vale anche per il nodo seme.
   if (atmId === 1) {
     const seed: TokenMessage = {
@@ -164,6 +176,6 @@ export const startAtm = async (
       balance: INITIAL_BALANCE,
       quietRounds: 0,
     };
-    void onMessage(seed);
+    enqueue(seed);
   }
 };
