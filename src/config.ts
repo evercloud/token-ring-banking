@@ -6,6 +6,12 @@ export const HOST = "127.0.0.1";
 
 export const BASE_PORT = 4000;
 
+// Pausa tra la ricezione e l'inoltro del token. Senza questo ritardo
+// il token gira a velocità CPU e i log diventano illeggibili (e il video
+// di consegna inguardabile). 500ms è un buon compromesso fra leggibilità
+// e durata della demo.
+export const FORWARD_DELAY_MS = 500;
+
 // ATM k listens on BASE_PORT + k (e.g. ATM1 -> 4001).
 export const listenPort = (atmId: number): number => BASE_PORT + atmId;
 

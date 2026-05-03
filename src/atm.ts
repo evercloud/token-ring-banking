@@ -4,6 +4,7 @@ import {
   TokenLineDecoder,
 } from "./protocol.js";
 import {
+  FORWARD_DELAY_MS,
   INITIAL_BALANCE,
   listenPort,
   successorPort,
@@ -23,6 +24,9 @@ const applyOp = (balance: number, op: TxOp): number => {
   }
   return balance - op.amount;
 };
+
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
 
 export const startAtm = async (
   atmId: number,
@@ -50,7 +54,7 @@ export const startAtm = async (
     toSucc.write(serializeTokenMessage(balance));
   };
 
-  const onToken = (msg: TokenMessage): void => {
+  const onToken = async (msg: TokenMessage): Promise<void> => {
     // Sezione critica del Token Ring: solo chi possiede il token può
     // leggere/scrivere il saldo. Prima cosa, allineo la copia locale
     // al valore portato dal token (gli altri nodi potrebbero averlo
@@ -72,19 +76,27 @@ export const startAtm = async (
       printToConsole(`transaction completed`);
     }
 
+    // Pausa prima dell'inoltro per rendere leggibile la circolazione del
+    // token (vedi FORWARD_DELAY_MS in config.ts).
+    await sleep(FORWARD_DELAY_MS);
+
     printToConsole(`forward token, balance ${balance}`);
     forward();
   };
 
-  fromPred.on("data", (buf: Buffer) => {
+  // Le callback di "data"/"end" sono async: in un Token Ring c'è un solo
+  // token in circolazione, quindi non possono arrivare due messaggi mentre
+  // ne sto elaborando uno (il predecessore non rispedirà finché il token
+  // non gli torna), e non c'è rischio di onToken sovrapposte.
+  fromPred.on("data", async (buf: Buffer) => {
     for (const msg of decoder.append(buf.toString("utf8"))) {
-      onToken(msg);
+      await onToken(msg);
     }
   });
 
-  fromPred.on("end", () => {
+  fromPred.on("end", async () => {
     for (const msg of decoder.flush()) {
-      onToken(msg);
+      await onToken(msg);
     }
   });
 
@@ -93,6 +105,6 @@ export const startAtm = async (
   // primo giro vengono prodotti gli stessi log degli altri nodi
   // ("token ricevuto / inoltro token"), come da esempio nella specifica.
   if (atmId === 1) {
-    onToken({ type: "TOKEN", balance: INITIAL_BALANCE });
+    void onToken({ type: "TOKEN", balance: INITIAL_BALANCE });
   }
 };
