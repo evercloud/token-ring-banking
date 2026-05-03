@@ -55,7 +55,7 @@ export const startAtm = async (
 
   // Chiusura ordinata dei socket. Non chiamiamo process.exit: lasciamo
   // che l'event loop si svuoti naturalmente quando i socket sono chiusi,
-  // cosi' eventuali write pendenti hanno il tempo di flushare.
+  // così eventuali write pendenti hanno il tempo di flushare.
   const shutdown = (): void => {
     if (!toSucc.writableEnded) {
       toSucc.end();
@@ -84,7 +84,7 @@ export const startAtm = async (
     }
 
     // ---- TOKEN normale ---------------------------------------------------
-    // Sezione critica del Token Ring: solo chi possiede il token puo'
+    // Sezione critica del Token Ring: solo chi possiede il token può
     // leggere/scrivere il saldo. Riallineo la copia locale al valore
     // portato dal token (gli altri nodi potrebbero averlo modificato
     // mentre il token non era qui), eseguo eventualmente una transazione,
@@ -99,18 +99,20 @@ export const startAtm = async (
       const before = balance;
       balance = applyOp(balance, op);
       if (op.kind === "withdraw" && balance === before) {
-        printToConsole(`withdraw skipped (not enough money), balance ${balance}`);
+        printToConsole(
+          `withdraw skipped (not enough money), balance ${balance}`,
+        );
       } else {
         printToConsole(`after tx, balance ${balance}`);
       }
       printToConsole(`transaction completed`);
-      // Una transazione e' avvenuta: il ring NON e' idle. Resetto il
+      // Una transazione è avvenuta: il ring NON è idle. Resetto il
       // contatore prima di rilanciare il token.
       quietRounds = 0;
     } else {
       // Nessuna transazione in coda: incremento il contatore di giri
       // idle portato dal token. Quando ATM_COUNT nodi consecutivi non
-      // fanno modifiche, il giro e' completo senza attivita' -> termino.
+      // fanno modifiche, il giro è completo senza attività -> termino.
       quietRounds = msg.quietRounds + 1;
       printToConsole(
         `token arrived (idle ${quietRounds}/${ATM_COUNT}), balance ${balance}`,
@@ -124,7 +126,7 @@ export const startAtm = async (
     // Rilevazione di terminazione distribuita: se ho appena chiuso un
     // intero giro idle, immetto un DONE col mio id come origine. Non
     // esco subito: aspetto che il DONE torni a me dopo aver fatto il
-    // giro, cosi' so che tutti gli altri lo hanno visto e propagato.
+    // giro, così so che tutti gli altri lo hanno visto e propagato.
     if (quietRounds >= ATM_COUNT) {
       printToConsole(
         `ring idle for ${quietRounds} hops, initiating shutdown (origin ATM${atmId})`,
@@ -138,8 +140,8 @@ export const startAtm = async (
   };
 
   // Mutex implicito sui messaggi in arrivo: incateno ogni nuovo messaggio
-  // su una Promise sequenziale, cosi' due chiamate a onMessage non possono
-  // mai sovrapporsi anche se TCP dovesse consegnare piu' messaggi prima
+  // su una Promise sequenziale, così due chiamate a onMessage non possono
+  // mai sovrapporsi anche se TCP dovesse consegnare più messaggi prima
   // che il primo sia stato processato.
   // Nel Token Ring nominale (un solo testimone in circolazione) la
   // sovrapposizione non si presenta, ma serializzare qui rende la logica
@@ -166,8 +168,8 @@ export const startAtm = async (
     }
   });
 
-  // ATM1 e' il seme del ring: inietta il primo TOKEN. Lo facciamo passare
-  // per la stessa coda usata dai messaggi in ingresso, cosi' anche al
+  // ATM1 è il seme del ring: inietta il primo TOKEN. Lo facciamo passare
+  // per la stessa coda usata dai messaggi in ingresso, così anche al
   // primo giro vengono prodotti gli stessi log degli altri nodi e la
   // logica di terminazione vale anche per il nodo seme.
   if (atmId === 1) {

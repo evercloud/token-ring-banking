@@ -4,11 +4,11 @@
 //    consecutivi senza modifiche (quietRounds), usato dalla rilevazione
 //    di terminazione distribuita.
 //  - DONE: messaggio di shutdown coordinato. Quando un nodo rileva che
-//    il ring e' rimasto idle per ATM_COUNT hop consecutivi, immette un
+//    il ring è rimasto idle per ATM_COUNT hop consecutivi, immette un
 //    DONE marcato col proprio id (origin). Il DONE fa un giro completo:
 //    ogni nodo che lo riceve lo inoltra ed esce; l'origine, quando
 //    riceve di ritorno il proprio DONE, sa che tutti hanno propagato
-//    e puo' uscire a sua volta.
+//    e può uscire a sua volta.
 
 export type TokenMessage = {
   type: "TOKEN";
