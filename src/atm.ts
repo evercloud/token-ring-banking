@@ -42,12 +42,21 @@ export const startAtm = async (
   const decoder = new TokenLineDecoder();
   const queue = [...pending];
 
-  const forward = (balance: number): void => {
+  // Memoria privata del nodo: ogni ATM ha la sua copia del saldo.
+  // Viene riallineata al valore portato dal token a ogni giro (vedi onToken).
+  let balance = INITIAL_BALANCE;
+
+  const forward = (): void => {
     toSucc.write(serializeTokenMessage(balance));
   };
 
   const onToken = (msg: TokenMessage): void => {
-    let balance = msg.balance;
+    // Sezione critica del Token Ring: solo chi possiede il token può
+    // leggere/scrivere il saldo. Prima cosa, allineo la copia locale
+    // al valore portato dal token (gli altri nodi potrebbero averlo
+    // modificato mentre il token non era qui), poi eventualmente eseguo
+    // una transazione e infine rilascio passando il token al successore.
+    balance = msg.balance;
     printToConsole(`token arrived, balance ${balance}`);
 
     if (queue.length > 0) {
@@ -60,10 +69,11 @@ export const startAtm = async (
       } else {
         printToConsole(`after tx, balance ${balance}`);
       }
+      printToConsole(`transaction completed`);
     }
 
     printToConsole(`forward token, balance ${balance}`);
-    forward(balance);
+    forward();
   };
 
   fromPred.on("data", (buf: Buffer) => {
@@ -78,8 +88,11 @@ export const startAtm = async (
     }
   });
 
+  // ATM1 è il seme del ring: inietta il primo token. Lo facciamo passare
+  // per onToken (invece di chiamare forward direttamente) così anche al
+  // primo giro vengono prodotti gli stessi log degli altri nodi
+  // ("token ricevuto / inoltro token"), come da esempio nella specifica.
   if (atmId === 1) {
-    printToConsole(`forward token, balance ${INITIAL_BALANCE}`);
-    forward(INITIAL_BALANCE);
+    onToken({ type: "TOKEN", balance: INITIAL_BALANCE });
   }
 };
