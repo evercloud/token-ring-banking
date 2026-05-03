@@ -28,6 +28,10 @@ export const startAtm = async (
   atmId: number,
   pending: TxOp[],
 ): Promise<void> => {
+  const printToConsole = (line: string): void => {
+    console.log(`[ATM${atmId}] ${line}`);
+  };
+
   const port = listenPort(atmId);
   const succ = successorPort(atmId);
 
@@ -44,9 +48,21 @@ export const startAtm = async (
 
   const onToken = (msg: TokenMessage): void => {
     let balance = msg.balance;
+    printToConsole(`token arrived, balance ${balance}`);
+
     if (queue.length > 0) {
-      balance = applyOp(balance, queue.shift()!);
+      const op = queue.shift()!;
+      printToConsole(`start ${op.kind} ${op.amount}`);
+      const before = balance;
+      balance = applyOp(balance, op);
+      if (op.kind === "withdraw" && balance === before) {
+        printToConsole(`withdraw skipped (not enough money), balance ${balance}`);
+      } else {
+        printToConsole(`after tx, balance ${balance}`);
+      }
     }
+
+    printToConsole(`forward token, balance ${balance}`);
     forward(balance);
   };
 
@@ -63,6 +79,7 @@ export const startAtm = async (
   });
 
   if (atmId === 1) {
+    printToConsole(`forward token, balance ${INITIAL_BALANCE}`);
     forward(INITIAL_BALANCE);
   }
 };
