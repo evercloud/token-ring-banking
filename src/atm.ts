@@ -10,8 +10,24 @@ import {
 } from "./config.js";
 import { acceptFirstConnection, connectWithRetry } from "./transport.js";
 
-// Wire predecessor socket, successor socket, forward TOKEN lines (balance unchanged for now).
-export const startAtm = async (atmId: number): Promise<void> => {
+export type TxOp =
+  | { kind: "withdraw"; amount: number }
+  | { kind: "deposit"; amount: number };
+
+const applyOp = (balance: number, op: TxOp): number => {
+  if (op.kind === "deposit") {
+    return balance + op.amount;
+  }
+  if (op.amount > balance) {
+    return balance;
+  }
+  return balance - op.amount;
+};
+
+export const startAtm = async (
+  atmId: number,
+  pending: TxOp[],
+): Promise<void> => {
   const port = listenPort(atmId);
   const succ = successorPort(atmId);
 
@@ -20,25 +36,33 @@ export const startAtm = async (atmId: number): Promise<void> => {
   const [fromPred, toSucc] = await Promise.all([incomingP, outgoingP]);
 
   const decoder = new TokenLineDecoder();
+  const queue = [...pending];
 
-  const forward = (msg: TokenMessage): void => {
-    toSucc.write(serializeTokenMessage(msg.balance));
+  const forward = (balance: number): void => {
+    toSucc.write(serializeTokenMessage(balance));
+  };
+
+  const onToken = (msg: TokenMessage): void => {
+    let balance = msg.balance;
+    if (queue.length > 0) {
+      balance = applyOp(balance, queue.shift()!);
+    }
+    forward(balance);
   };
 
   fromPred.on("data", (buf: Buffer) => {
-    const msgs = decoder.append(buf.toString("utf8"));
-    for (const msg of msgs) {
-      forward(msg);
+    for (const msg of decoder.append(buf.toString("utf8"))) {
+      onToken(msg);
     }
   });
 
   fromPred.on("end", () => {
     for (const msg of decoder.flush()) {
-      forward(msg);
+      onToken(msg);
     }
   });
 
   if (atmId === 1) {
-    toSucc.write(serializeTokenMessage(INITIAL_BALANCE));
+    forward(INITIAL_BALANCE);
   }
 };
