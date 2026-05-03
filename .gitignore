@@ -15,6 +15,3 @@ dist/
 .idea/
 .vscode/
 *.swp
-
-# Tests / coverage (future steps)
-coverage/
