@@ -142,9 +142,9 @@ export const startAtm = async (
       // contatore prima di rilanciare il token.
       idleHops = 0;
     } else {
-      // Nessuna transazione in coda: incremento il contatore di giri
-      // idle portato dal token. Quando ATM_COUNT nodi consecutivi non
-      // fanno modifiche, il giro è completo senza attività -> termino.
+      // Nessuna transazione in coda: incremento idleHops sul token (un hop
+      // idle in più). Quando si raggiungono ATM_COUNT hop idle consecutivi
+      // senza alcuna transazione, un nodo immette DONE (vedi sotto).
       idleHops = msg.idleHops + 1;
       printToConsole(
         `token received, current balance ${balance} (no pending transactions, idle ${idleHops}/${ATM_COUNT})`,
@@ -155,10 +155,10 @@ export const startAtm = async (
     // leggibile la circolazione del token nei log e nel video.
     await sleep(FORWARD_DELAY_MS);
 
-    // Rilevazione di terminazione distribuita: se ho appena chiuso un
-    // intero giro idle, immetto un DONE col mio id come origine. Non
-    // esco subito: aspetto che il DONE torni a me dopo aver fatto il
-    // giro, così so che tutti gli altri lo hanno visto e propagato.
+    // Rilevazione di terminazione distribuita: idleHops >= ATM_COUNT immette
+    // un DONE col mio id come origine. Non esco subito: aspetto che il DONE
+    // torni a me dopo aver fatto il giro dell'anello, così so che tutti gli
+    // altri lo hanno visto e propagato.
     if (idleHops >= ATM_COUNT) {
       printToConsole(
         `ring idle for ${idleHops} hops, initiating coordinated shutdown (origin ATM${atmId})`,

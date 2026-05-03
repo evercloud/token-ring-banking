@@ -1,7 +1,7 @@
 // Wire format: un oggetto JSON per riga TCP (newline alla fine).
 // Sul ring possono viaggiare due tipi di messaggio:
-//  - TOKEN: il testimone normale, porta il saldo e il contatore di giri
-//    consecutivi senza modifiche (idleHops), usato dalla rilevazione
+//  - TOKEN: il testimone normale, porta il saldo e il contatore idleHops
+//    (hop consecutivi del token senza transazione sul saldo), usato dalla rilevazione
 //    di terminazione distribuita.
 //  - DONE: messaggio di shutdown coordinato. Quando un nodo rileva che
 //    il ring è rimasto idle per ATM_COUNT hop consecutivi, immette un
