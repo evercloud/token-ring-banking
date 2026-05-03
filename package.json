@@ -12,7 +12,8 @@
     "clean": "rm -rf dist",
     "start": "node dist/main.js",
     "dev": "tsx watch src/main.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "demo": "bash run-demo.sh"
   },
   "keywords": [
     "token-ring",

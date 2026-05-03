@@ -1,8 +1,9 @@
 # Token Ring Banking
 
-Distributed banking simulation: four ATM processes on localhost, mutual exclusion via a token ring.
+Quattro processi ATM su localhost, mutua esclusione su un saldo
+condiviso tramite Token Ring.
 
-## Requirements
+## Requisiti
 
 - Node.js 20+
 - npm
@@ -11,20 +12,42 @@ Distributed banking simulation: four ATM processes on localhost, mutual exclusio
 
 ```bash
 npm install
+npm run build
 ```
 
-## Scripts
+## Avvio
 
-- `npm run build` — compile to `dist/`
-- `npm start` — run `node dist/main.js`
-- `npm run dev` — watch mode via `tsx`
-- `npm run typecheck` — typecheck only
-
-## Run
+Modo consigliato — un singolo comando avvia i 4 ATM come processi
+UNIX separati e li ferma tutti insieme con `Ctrl+C`:
 
 ```bash
-npm run build
-npm start
+npm run demo
 ```
 
-Remote: `https://github.com/evercloud/token-ring-banking.git`
+Lo script stampa i PID dei quattro processi a inizio esecuzione,
+così è evidente che si tratta di quattro processi distinti e non di
+una simulazione interna a un singolo runtime. Lo scenario eseguito è
+quello dell'esempio della specifica (saldo 1000 → 400).
+
+### Avvio manuale (opzionale)
+
+In alternativa, ogni ATM si può lanciare in un terminale dedicato.
+ATM1 inietta il token e conviene avviarlo per ultimo.
+
+```bash
+# Terminale 2
+node dist/main.js --atm 2 --withdraw 200
+
+# Terminale 3
+node dist/main.js --atm 3 --deposit 100
+
+# Terminale 4
+node dist/main.js --atm 4 --withdraw 500
+
+# Terminale 1
+node dist/main.js --atm 1
+```
+
+Più operazioni sullo stesso ATM si accodano ripetendo le opzioni:
+`--atm 2 --withdraw 200 --deposit 50`. Vengono eseguite una per giro
+del token.
