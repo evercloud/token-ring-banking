@@ -113,7 +113,7 @@ export const startAtm = async (
     // poi rilascio passando il token al successore.
     balance = msg.balance;
     const op = queue.shift();
-    let emptyRounds: number;
+    let idleHops: number;
 
     if (op !== undefined) {
       // Log didascalici allineati ai cinque step della specifica §5.2:
@@ -140,14 +140,14 @@ export const startAtm = async (
       printToConsole(`leaving critical section`);
       // Una transazione è avvenuta: il ring NON è idle. Resetto il
       // contatore prima di rilanciare il token.
-      emptyRounds = 0;
+      idleHops = 0;
     } else {
       // Nessuna transazione in coda: incremento il contatore di giri
       // idle portato dal token. Quando ATM_COUNT nodi consecutivi non
       // fanno modifiche, il giro è completo senza attività -> termino.
-      emptyRounds = msg.emptyRounds + 1;
+      idleHops = msg.idleHops + 1;
       printToConsole(
-        `token received, current balance ${balance} (no pending transactions, idle ${emptyRounds}/${ATM_COUNT})`,
+        `token received, current balance ${balance} (no pending transactions, idle ${idleHops}/${ATM_COUNT})`,
       );
     }
 
@@ -159,16 +159,16 @@ export const startAtm = async (
     // intero giro idle, immetto un DONE col mio id come origine. Non
     // esco subito: aspetto che il DONE torni a me dopo aver fatto il
     // giro, così so che tutti gli altri lo hanno visto e propagato.
-    if (emptyRounds >= ATM_COUNT) {
+    if (idleHops >= ATM_COUNT) {
       printToConsole(
-        `ring idle for ${emptyRounds} hops, initiating coordinated shutdown (origin ATM${atmId})`,
+        `ring idle for ${idleHops} hops, initiating coordinated shutdown (origin ATM${atmId})`,
       );
       toSucc.write(serializeDoneMessage(balance, atmId));
       return;
     }
 
     printToConsole(`forward token, balance ${balance}`);
-    toSucc.write(serializeTokenMessage(balance, emptyRounds));
+    toSucc.write(serializeTokenMessage(balance, idleHops));
   };
 
   // Mutex implicito sui messaggi in arrivo: incateno ogni nuovo messaggio
@@ -208,7 +208,7 @@ export const startAtm = async (
     const seed: TokenMessage = {
       type: "TOKEN",
       balance: INITIAL_BALANCE,
-      emptyRounds: 0,
+      idleHops: 0,
     };
     enqueue(seed);
   }
