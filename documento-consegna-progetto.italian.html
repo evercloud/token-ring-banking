@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <title>
+      Sistema di transazioni bancarie distribuite con mutua esclusione a Token
+      Ring
+    </title>
+    <style>
+      body {
+        font-family: Georgia, "Times New Roman", serif;
+        max-width: 720px;
+        margin: 2em auto;
+        line-height: 1.55;
+        color: #222;
+        padding: 0 1.2em;
+      }
+      h1 {
+        font-size: 1.55em;
+        margin-bottom: 0.2em;
+      }
+      h2 {
+        font-size: 1.18em;
+        margin-top: 2em;
+      }
+      p {
+        margin: 0.7em 0;
+      }
+      ul {
+        padding-left: 1.4em;
+      }
+      li {
+        margin: 0.25em 0;
+      }
+      code {
+        font-family: Menlo, Consolas, "Courier New", monospace;
+        font-size: 0.9em;
+        background: #f1f1f1;
+        padding: 0 0.25em;
+        border-radius: 2px;
+      }
+      pre {
+        font-family: Menlo, Consolas, "Courier New", monospace;
+        font-size: 0.88em;
+        background: #f6f6f6;
+        padding: 0.6em 0.9em;
+        border-radius: 4px;
+        overflow-x: auto;
+        line-height: 1.45;
+      }
+      pre code {
+        background: none;
+        padding: 0;
+        font-size: 1em;
+      }
+      table {
+        border-collapse: collapse;
+        margin: 0.7em 0;
+      }
+      th,
+      td {
+        border: 1px solid #ccc;
+        padding: 0.35em 0.7em;
+        text-align: left;
+      }
+      th {
+        background: #f1f1f1;
+      }
+      .meta {
+        color: #555;
+        font-size: 0.95em;
+      }
+      @media print {
+        body {
+          max-width: none;
+          margin: 1.5cm;
+        }
+        pre {
+          white-space: pre-wrap;
+          word-wrap: break-word;
+        }
+        h2 {
+          page-break-after: avoid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>
+      Sistema di transazioni bancarie distribuite con mutua esclusione a Token
+      Ring
+    </h1>
+    <p class="meta">
+      <strong>Corso:</strong> Intelligenza Artificiale Distribuita<br />
+      <strong>Docente:</strong> Prof. Ala Arman<br />
+      <strong>Studente:</strong> Claudio Scamporlino<br />
+      <strong>Matricola:</strong> omessa nella versione pubblicata
+    </p>
+
+    <p>
+      Questo repository contiene l'implementazione sviluppata per un esame
+      universitario di Intelligenza Artificiale Distribuita. Quattro processi
+      ATM su <code>localhost</code> condividono un saldo bancario e coordinano
+      gli aggiornamenti con l'algoritmo Token Ring per la mutua esclusione
+      distribuita. Il progetto illustra scambio di messaggi, sezioni critiche e
+      topologia ad anello — non è un sistema bancario di produzione.
+    </p>
+
+    <h2>1. Linguaggio e ambiente</h2>
+    <p>
+      Il progetto è scritto in TypeScript e compilato a JavaScript per essere
+      eseguito su Node.js 20 o successivo. La comunicazione tra i nodi usa
+      esclusivamente il modulo standard <code>node:net</code> (TCP) e non
+      richiede librerie di rete o di concorrenza esterne. È stato sviluppato e
+      testato su macOS.
+    </p>
+
+    <h2>2. Dipendenze</h2>
+    <p>
+      Il progetto non ha dipendenze a runtime. Le dipendenze di sviluppo,
+      inserite nel <code>package.json</code>, sono:
+    </p>
+    <ul>
+      <li><code>typescript</code> — compilatore <code>tsc</code>;</li>
+      <li><code>@types/node</code> — tipi delle API di Node;</li>
+      <li>
+        <code>tsx</code> — usato solo dallo script <code>npm run dev</code> in
+        watch mode, non necessario all'esecuzione.
+      </li>
+    </ul>
+    <p>Installazione, una sola volta, dalla radice del repository:</p>
+    <pre><code>npm install</code></pre>
+
+    <h2>3. Compilazione</h2>
+    <p>Per compilare, lanciare dalla radice del repository:</p>
+    <pre><code>npm run build</code></pre>
+    <p>
+      Viene eseguito <code>tsc</code> e generata la cartella <code>dist/</code>.
+      Il punto d'ingresso di ciascun nodo ATM è <code>dist/main.js</code>.
+    </p>
+
+    <h2>4. Modello di esecuzione</h2>
+    <p>
+      Il sistema è composto da quattro nodi (ATM1, ATM2, ATM3, ATM4), ciascuno
+      avviato come processo distinto del sistema operativo. La coordinazione fra
+      nodi avviene solo tramite scambio di messaggi su <code>127.0.0.1</code>:
+    </p>
+    <ul>
+      <li>
+        ATM<em>k</em> ascolta sulla porta <code>4000 + k</code> (ATM1 sulla
+        4001, ATM2 sulla 4002, ecc.);
+      </li>
+      <li>
+        l'anello logico è ATM1 → ATM2 → ATM3 → ATM4 → ATM1; ogni nodo conosce
+        esclusivamente il proprio successore;
+      </li>
+      <li>
+        ATM1 è il nodo iniziale del ring: inietta il primo token dopo aver
+        stabilito le connessioni. In avvio manuale è consigliabile avviarlo per
+        ultimo, in modo che gli altri nodi siano già in ascolto.
+      </li>
+    </ul>
+    <p>
+      Ogni nodo mantiene la propria copia privata del saldo. La mutua esclusione
+      sull'aggiornamento è garantita dal possesso del token: solo il nodo che ha
+      ricevuto il token può eseguire una transazione e modificare il saldo,
+      prima di inoltrare il token al successore con il valore aggiornato.
+    </p>
+
+    <h2>5. Avvio dei quattro nodi</h2>
+    <p>
+      Per un avvio manuale, i quattro nodi vanno lanciati in quattro terminali
+      distinti, dalla radice del repository, dopo <code>npm install</code> e
+      <code>npm run build</code>. La tabella seguente mostra come lanciare i
+      quattro nodi per eseguire l'esempio delle specifiche di progetto: saldo
+      iniziale 1000, ATM2 prelievo 200, ATM3 deposito 100, ATM4 prelievo 500,
+      saldo finale 400.
+    </p>
+
+    <table>
+      <tr>
+        <th>Terminale</th>
+        <th>Processo</th>
+        <th>Comando</th>
+      </tr>
+      <tr>
+        <td>1</td>
+        <td>ATM2</td>
+        <td><code>node dist/main.js --atm 2 --withdraw 200</code></td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>ATM3</td>
+        <td><code>node dist/main.js --atm 3 --deposit 100</code></td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>ATM4</td>
+        <td><code>node dist/main.js --atm 4 --withdraw 500</code></td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>ATM1</td>
+        <td><code>node dist/main.js --atm 1</code></td>
+      </tr>
+    </table>
+
+    <p>
+      Più operazioni sullo stesso ATM si accodano ripetendo le opzioni sulla
+      stessa riga di comando, ad esempio
+      <code>--atm 2 --withdraw 200 --deposit 50</code>: vengono eseguite una per
+      giro del token, in ordine FIFO.
+    </p>
+
+    <p>
+      In alternativa, lo script <code>run-demo.sh</code> (richiamabile anche
+      come <code>npm run demo</code>) avvia i quattro processi con un singolo
+      comando, stampando i PID a inizio esecuzione per evidenziare che si tratta
+      di quattro processi UNIX distinti. <code>Ctrl+C</code> li chiude tutti
+      insieme.
+    </p>
+
+    <h2>6. Comportamento atteso</h2>
+    <p>
+      Le transazioni vengono gestite in mutua esclusione dal passaggio del token
+      sull'anello: ATM2 esegue il prelievo (saldo 800), ATM3 il deposito (900),
+      ATM4 il prelievo finale (400). Il saldo finale è 400. I log di ciascun
+      nodo riportano la ricezione del token, l'inizio e la fine di ciascuna
+      transazione, il saldo aggiornato e l'inoltro del token al successore. Ho
+      prefissato tutti i messaggi con l'identificatore del nodo
+      (<code>[ATM1]</code>, …, <code>[ATM4]</code>), così resta leggibile la
+      circolazione del token e il saldo anche quando l'output dei processi si
+      mescola nella stessa console. Tra la fine della sezione critica e
+      l'inoltro del token al successore è inserita una piccola pausa
+      configurabile (<code>FORWARD_DELAY_MS</code> in <code>config.ts</code>,
+      default 500ms) al solo scopo di rendere più leggibile la circolazione del
+      token nei log. Il valore può essere portato a 0 per ottenere l'inoltro
+      immediato previsto dalle specifiche di progetto.
+    </p>
+
+    <h2>7. Terminazione coordinata</h2>
+    <p>
+      Le specifiche di progetto prevedono che il token circoli continuamente.
+      Durante i test ho scelto di aggiungere una rilevazione di terminazione
+      distribuita: il messaggio TOKEN porta, oltre al saldo, un contatore
+      <code>idleHops</code> degli hop consecutivi del token senza operazioni in
+      coda da elaborare. Ogni nodo lo incrementa se la propria coda è vuota e lo
+      azzera se ha un'operazione in coda da elaborare. Quando
+      <code>idleHops</code> raggiunge 4 (cioè un giro completo dell'anello con
+      tutte le code vuote), il nodo che rileva la soglia immette nel ring un
+      messaggio DONE marcato con il proprio identificatore; il DONE percorre
+      l'anello e fa uscire ordinatamente tutti i nodi.
+    </p>
+
+    <p>
+      È importante notare che il protocollo basato sul TOKEN non cambia. Il DONE
+      è un'estensione progettuale per non lasciare il ring in esecuzione
+      perpetua: è un messaggio introdotto per studiare un caso elementare di
+      terminazione distribuita coordinata e per ottenere una chiusura ordinata
+      dei processi, migliorando la leggibilità dei risultati.
+    </p>
+
+    <h2>8. Repository e video</h2>
+    <p>
+      Il codice sorgente, con commenti su token, scambio di messaggi e sezione
+      critica nei file <code>protocol.ts</code>, <code>atm.ts</code>,
+      <code>config.ts</code> e <code>transport.ts</code>, è disponibile su
+      GitHub all'indirizzo:
+    </p>
+    <p><code>https://github.com/evercloud/token-ring-banking</code></p>
+    <p>
+      Il repository contiene inoltre, nella cartella <code>video/</code>, due
+      video dimostrativi con i quattro nodi in esecuzione, la circolazione del
+      token nei log e l'aggiornamento del saldo dopo ciascuna transazione. Il
+      video <code>video-demo-manuale.mp4</code> mostra la modalità manuale di
+      avvio dei quattro nodi in quattro terminali distinti, mentre il video
+      <code>video-demo-script.mp4</code> mostra l'esecuzione dello script
+      <code>npm run demo</code> che avvia i quattro processi con un singolo
+      comando, stampando i PID a inizio esecuzione per evidenziare che si tratta
+      di quattro processi distinti.
+    </p>
+  </body>
+</html>

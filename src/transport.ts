@@ -1,9 +1,9 @@
 import net from "node:net";
 import { HOST } from "./config.js";
 
-// Avvia il listener sulla porta data; il primo socket entrante è il
-// predecessore nel ring, poi il server smette di accettare
-// nuove connessioni (un nodo ha esattamente un predecessore).
+// Start the listener on the given port; the first incoming socket is the
+// predecessor in the ring, then the server stops accepting new connections
+// (each node has exactly one predecessor).
 export const acceptFirstConnection = (port: number): Promise<net.Socket> => {
   return new Promise((resolve, reject) => {
     const server = net.createServer();
@@ -24,9 +24,9 @@ type RetryOpts = {
 
 const defaultRetry: RetryOpts = { maxAttempts: 150, delayMs: 100 };
 
-// Connessione client al successore: ritenta finché il peer non è in
-// ascolto, dato che i quattro processi possono essere avviati in qualunque
-// ordine e non c'è garanzia che il successore abbia già fatto il listen.
+// Client connection to the successor: retries until the peer is listening,
+// since the four processes may be started in any order and there is no
+// guarantee the successor has already called listen.
 export const connectWithRetry = async (
   port: number,
   opts: RetryOpts = defaultRetry,

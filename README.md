@@ -1,12 +1,23 @@
 # Token Ring Banking
 
-Quattro processi ATM su localhost, mutua esclusione su un saldo
-condiviso tramite Token Ring. Quando tutte le transazioni sono state
-eseguite il ring si arresta automaticamente: il primo nodo che vede
-un giro completo senza modifiche immette un messaggio `DONE` che fa il
-giro e fa uscire ordinatamente i quattro processi.
+University project for the *Distributed Artificial Intelligence* course,
+developed for a course exam. It uses a banking scenario to study distributed
+mutual exclusion: separate processes coordinate access to a shared balance
+without a central lock. It is a runnable implementation of the Token Ring
+algorithm — not production banking software.
 
-## Requisiti
+Four ATM nodes run as independent OS processes on `localhost`, connected in a
+logical ring over TCP. They share a single bank balance. **Mutual exclusion**
+is enforced with the classic **Token Ring** algorithm: a token circulates
+around the ring, and only the node that currently holds it may read or update
+the balance. After processing a queued withdrawal or deposit, the node forwards
+the token to its successor with the new balance.
+
+When every node has finished its work, the ring stops automatically. The node
+that detects a full lap with no pending transactions injects a `DONE` message;
+it travels around the ring and shuts down all four processes in order.
+
+## Requirements
 
 - Node.js 20+
 - npm
@@ -18,40 +29,40 @@ npm install
 npm run build
 ```
 
-## Avvio
+## Running
 
-Modo consigliato — un singolo comando avvia i 4 ATM come processi
-UNIX separati e li ferma tutti insieme (manualmente con `Ctrl+C`,
-oppure automaticamente al termine delle transazioni):
+Recommended — a single command starts all 4 ATMs as separate UNIX
+processes and stops them together (manually with `Ctrl+C`, or
+automatically when transactions finish):
 
 ```bash
 npm run demo
 ```
 
-Lo script stampa i PID dei quattro processi a inizio esecuzione,
-così è evidente che si tratta di quattro processi distinti e non di
-una simulazione interna a un singolo runtime. Lo scenario eseguito è
-quello dell'esempio della specifica (saldo 1000 → 400).
+The script prints the PIDs of the four processes at startup, making it
+clear that these are four distinct processes rather than an in-process
+simulation inside a single runtime. The scenario run is the one from the
+specification example (balance 1000 → 400).
 
-### Avvio manuale (opzionale)
+### Manual startup (optional)
 
-In alternativa, ogni ATM si può lanciare in un terminale dedicato.
-ATM1 inietta il token e conviene avviarlo per ultimo.
+Alternatively, each ATM can be launched in a dedicated terminal.
+ATM1 injects the token and should be started last.
 
 ```bash
-# Terminale 2
+# Terminal 2
 node dist/main.js --atm 2 --withdraw 200
 
-# Terminale 3
+# Terminal 3
 node dist/main.js --atm 3 --deposit 100
 
-# Terminale 4
+# Terminal 4
 node dist/main.js --atm 4 --withdraw 500
 
-# Terminale 1
+# Terminal 1
 node dist/main.js --atm 1
 ```
 
-Più operazioni sullo stesso ATM si accodano ripetendo le opzioni:
-`--atm 2 --withdraw 200 --deposit 50`. Vengono eseguite una per giro
-del token.
+Multiple operations on the same ATM are queued by repeating the options:
+`--atm 2 --withdraw 200 --deposit 50`. They are executed one per token
+lap.

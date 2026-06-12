@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Avvia i 4 nodi ATM come processi UNIX separati e li ferma tutti
-# insieme con un singolo Ctrl+C. I PID stampati a inizio esecuzione
-# sono la prova che si tratta di quattro processi distinti.
+# Start the 4 ATM nodes as separate UNIX processes and stop them all
+# together with a single Ctrl+C. PIDs printed at startup prove these
+# are four distinct processes.
 
 set -e
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 
-# Build se manca, così lo script funziona anche da clean checkout.
+# Build if missing, so the script works from a clean checkout too.
 if [ ! -f dist/main.js ]; then
   echo "[demo] dist/ missing, running npm run build..."
   npm run build
@@ -41,8 +41,8 @@ echo "[demo] starting 4 ATMs as separate UNIX processes:"
 start_atm ATM2 --atm 2 --withdraw 200
 start_atm ATM3 --atm 3 --deposit 100
 start_atm ATM4 --atm 4 --withdraw 500
-# Piccola pausa: ATM1 inietta il token, partiamo per ultimi così
-# i listener degli altri sono sicuramente attivi.
+# Short pause: ATM1 injects the token, start it last so the other
+# nodes' listeners are definitely up.
 sleep 0.5
 start_atm ATM1 --atm 1
 echo "[demo] ring active, Ctrl+C to stop all."

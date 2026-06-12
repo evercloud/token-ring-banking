@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>
+      Distributed banking transactions with Token Ring mutual exclusion
+    </title>
+    <style>
+      body {
+        font-family: Georgia, "Times New Roman", serif;
+        max-width: 720px;
+        margin: 2em auto;
+        line-height: 1.55;
+        color: #222;
+        padding: 0 1.2em;
+      }
+      h1 {
+        font-size: 1.55em;
+        margin-bottom: 0.2em;
+      }
+      h2 {
+        font-size: 1.18em;
+        margin-top: 2em;
+      }
+      p {
+        margin: 0.7em 0;
+      }
+      ul {
+        padding-left: 1.4em;
+      }
+      li {
+        margin: 0.25em 0;
+      }
+      code {
+        font-family: Menlo, Consolas, "Courier New", monospace;
+        font-size: 0.9em;
+        background: #f1f1f1;
+        padding: 0 0.25em;
+        border-radius: 2px;
+      }
+      pre {
+        font-family: Menlo, Consolas, "Courier New", monospace;
+        font-size: 0.88em;
+        background: #f6f6f6;
+        padding: 0.6em 0.9em;
+        border-radius: 4px;
+        overflow-x: auto;
+        line-height: 1.45;
+      }
+      pre code {
+        background: none;
+        padding: 0;
+        font-size: 1em;
+      }
+      table {
+        border-collapse: collapse;
+        margin: 0.7em 0;
+      }
+      th,
+      td {
+        border: 1px solid #ccc;
+        padding: 0.35em 0.7em;
+        text-align: left;
+      }
+      th {
+        background: #f1f1f1;
+      }
+      .meta {
+        color: #555;
+        font-size: 0.95em;
+      }
+      @media print {
+        body {
+          max-width: none;
+          margin: 1.5cm;
+        }
+        pre {
+          white-space: pre-wrap;
+          word-wrap: break-word;
+        }
+        h2 {
+          page-break-after: avoid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>
+      Distributed banking transactions with Token Ring mutual exclusion
+    </h1>
+    <p class="meta">
+      <strong>Course:</strong> Distributed Artificial Intelligence<br />
+      <strong>Instructor:</strong> Prof. Ala Arman<br />
+      <strong>Student:</strong> Claudio Scamporlino<br />
+      <strong>Student ID:</strong> omitted in the published version
+    </p>
+
+    <p>
+      This repository contains the coursework implementation developed for a
+      university exam in Distributed Artificial Intelligence. Four ATM processes
+      on <code>localhost</code> share a bank balance and coordinate updates
+      with the Token Ring algorithm for distributed mutual exclusion. The
+      project demonstrates message passing, critical sections, and ring
+      topology — it is not production banking software.
+    </p>
+
+    <h2>1. Language and environment</h2>
+    <p>
+      The project is written in TypeScript and compiled to JavaScript to run
+      on Node.js 20 or later. Communication between nodes uses only the
+      standard <code>node:net</code> module (TCP) and does not require
+      external networking or concurrency libraries. It was developed and
+      tested on macOS.
+    </p>
+
+    <h2>2. Dependencies</h2>
+    <p>
+      The project has no runtime dependencies. Development dependencies,
+      listed in <code>package.json</code>, are:
+    </p>
+    <ul>
+      <li><code>typescript</code> — <code>tsc</code> compiler;</li>
+      <li><code>@types/node</code> — Node API type definitions;</li>
+      <li>
+        <code>tsx</code> — used only by the <code>npm run dev</code> script in
+        watch mode, not required at runtime.
+      </li>
+    </ul>
+    <p>Install once from the repository root:</p>
+    <pre><code>npm install</code></pre>
+
+    <h2>3. Build</h2>
+    <p>From the repository root, run:</p>
+    <pre><code>npm run build</code></pre>
+    <p>
+      This runs <code>tsc</code> and produces the <code>dist/</code> folder.
+      The entry point for each ATM node is <code>dist/main.js</code>.
+    </p>
+
+    <h2>4. Execution model</h2>
+    <p>
+      The system consists of four nodes (ATM1, ATM2, ATM3, ATM4), each started
+      as a separate operating-system process. Coordination between nodes happens
+      only through message exchange on <code>127.0.0.1</code>:
+    </p>
+    <ul>
+      <li>
+        ATM<em>k</em> listens on port <code>4000 + k</code> (ATM1 on
+        4001, ATM2 on 4002, etc.);
+      </li>
+      <li>
+        the logical ring is ATM1 → ATM2 → ATM3 → ATM4 → ATM1; each node knows
+        only its successor;
+      </li>
+      <li>
+        ATM1 is the initial ring node: it injects the first token after
+        connections are established. In manual startup it is advisable to start
+        it last, so the other nodes are already listening.
+      </li>
+    </ul>
+    <p>
+      Each node maintains its own private copy of the balance. Mutual exclusion
+      on updates is enforced by token possession: only the node holding the
+      token can execute a transaction and modify the balance, before forwarding
+      the token to its successor with the updated value.
+    </p>
+
+    <h2>5. Starting the four nodes</h2>
+    <p>
+      For manual startup, the four nodes must be launched in four separate
+      terminals from the repository root, after <code>npm install</code> and
+      <code>npm run build</code>. The table below shows how to start the four
+      nodes to run the project specification example: initial balance 1000,
+      ATM2 withdraw 200, ATM3 deposit 100, ATM4 withdraw 500, final balance
+      400.
+    </p>
+
+    <table>
+      <tr>
+        <th>Terminal</th>
+        <th>Process</th>
+        <th>Command</th>
+      </tr>
+      <tr>
+        <td>1</td>
+        <td>ATM2</td>
+        <td><code>node dist/main.js --atm 2 --withdraw 200</code></td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>ATM3</td>
+        <td><code>node dist/main.js --atm 3 --deposit 100</code></td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>ATM4</td>
+        <td><code>node dist/main.js --atm 4 --withdraw 500</code></td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>ATM1</td>
+        <td><code>node dist/main.js --atm 1</code></td>
+      </tr>
+    </table>
+
+    <p>
+      Multiple operations on the same ATM are queued by repeating the options on
+      the same command line, for example
+      <code>--atm 2 --withdraw 200 --deposit 50</code>: they are executed one
+      per token lap, in FIFO order.
+    </p>
+
+    <p>
+      Alternatively, the <code>run-demo.sh</code> script (also available as
+      <code>npm run demo</code>) starts all four processes with a single
+      command, printing PIDs at startup to show that these are four distinct
+      UNIX processes. <code>Ctrl+C</code> shuts them all down together.
+    </p>
+
+    <h2>6. Expected behavior</h2>
+    <p>
+      Transactions are handled under mutual exclusion as the token travels around
+      the ring: ATM2 performs the withdrawal (balance 800), ATM3 the deposit
+      (900), ATM4 the final withdrawal (400). The final balance is 400. Each
+      node's logs report token reception, the start and end of each transaction,
+      the updated balance, and token forwarding to the successor. All messages
+      are prefixed with the node identifier (<code>[ATM1]</code>, …,
+      <code>[ATM4]</code>), so token circulation and balance updates remain
+      readable even when process output is interleaved in the same console. A
+      small configurable pause between leaving the critical section and
+      forwarding the token (<code>FORWARD_DELAY_MS</code> in
+      <code>config.ts</code>, default 500ms) is inserted solely to make token
+      circulation easier to follow in the logs. The value can be set to 0 for
+      immediate forwarding as specified in the project requirements.
+    </p>
+
+    <h2>7. Coordinated termination</h2>
+    <p>
+      The project specification requires the token to circulate continuously.
+      During testing I chose to add distributed termination detection: the TOKEN
+      message carries, in addition to the balance, an <code>idleHops</code>
+      counter of consecutive token hops with no queued operations to process.
+      Each node increments it if its queue is empty and resets it if it has an
+      operation to process. When <code>idleHops</code> reaches 4 (i.e. a full
+      ring lap with all queues empty), the node that detects the threshold
+      injects a DONE message into the ring marked with its own identifier; DONE
+      travels around the ring and shuts down all nodes in order.
+    </p>
+
+    <p>
+      It is important to note that the TOKEN-based protocol does not change.
+      DONE is a design extension to avoid leaving the ring running indefinitely:
+      it is a message introduced to study a basic case of coordinated
+      distributed termination and to obtain an orderly process shutdown,
+      improving the readability of results.
+    </p>
+
+    <h2>8. Repository and videos</h2>
+    <p>
+      The source code, with comments on the token, message exchange, and critical
+      section in <code>protocol.ts</code>, <code>atm.ts</code>,
+      <code>config.ts</code>, and <code>transport.ts</code>, is available on
+      GitHub at:
+    </p>
+    <p><code>https://github.com/evercloud/token-ring-banking</code></p>
+    <p>
+      The repository also contains, in the <code>video/</code> folder, two
+      demonstration videos with the four nodes running, token circulation in the
+      logs, and balance updates after each transaction. The video
+      <code>video-demo-manuale.mp4</code> shows manual startup of the four
+      nodes in four separate terminals, while <code>video-demo-script.mp4</code>
+      shows execution of the <code>npm run demo</code> script that starts all
+      four processes with a single command, printing PIDs at startup to show that
+      these are four distinct processes.
+    </p>
+  </body>
+</html>

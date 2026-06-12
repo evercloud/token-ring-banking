@@ -1,14 +1,13 @@
-// Wire format: un oggetto JSON per riga TCP (newline alla fine).
-// Sul ring possono viaggiare due tipi di messaggio:
-//  - TOKEN: il testimone normale, porta il saldo e il contatore idleHops
-//    (hop consecutivi del token senza transazione sul saldo), usato dalla rilevazione
-//    di terminazione distribuita.
-//  - DONE: messaggio di shutdown coordinato. Quando un nodo rileva che
-//    il ring è rimasto idle per ATM_COUNT hop consecutivi, immette un
-//    DONE marcato col proprio id (origin). Il DONE fa un giro completo:
-//    ogni nodo che lo riceve lo inoltra ed esce; l'origine, quando
-//    riceve di ritorno il proprio DONE, sa che tutti hanno propagato
-//    e può uscire a sua volta.
+// Wire format: one JSON object per TCP line (trailing newline).
+// Two message types can travel on the ring:
+//  - TOKEN: the normal token, carries the balance and the idleHops counter
+//    (consecutive token hops without a balance transaction), used by distributed
+//    termination detection.
+//  - DONE: coordinated shutdown message. When a node detects that the ring has
+//    been idle for ATM_COUNT consecutive hops, it injects a DONE marked with
+//    its own id (origin). DONE makes a full lap: every node that receives it
+//    forwards it and exits; the origin, when it receives its own DONE back,
+//    knows everyone has propagated it and can exit as well.
 
 export type TokenMessage = {
   type: "TOKEN";
@@ -103,7 +102,7 @@ export const parseRingLine = (line: string): RingMessage => {
   throw new ProtocolError("not a ring message");
 };
 
-// Decoder NDJSON: trasforma chunk TCP in messaggi completi, riga per riga.
+// NDJSON decoder: turns TCP chunks into complete messages, line by line.
 export class RingMessageDecoder {
   private buffer = "";
 
